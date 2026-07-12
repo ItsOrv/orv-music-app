@@ -1,5 +1,23 @@
 import * as Linking from "expo-linking";
-import { api, setToken, clearToken, Me } from "./api";
+import { api, setToken, clearToken, getMe, Me } from "./api";
+
+// Extract a session token from a deep link like orvmusic://auth?t=<token> or any ?t= URL.
+export function tokenFromUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const q = Linking.parse(url).queryParams?.t;
+    const t = Array.isArray(q) ? q[0] : q;
+    return typeof t === "string" && t.startsWith("w.") ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+// Log in from a token carried in a deep link.
+export async function loginWithToken(token: string): Promise<Me> {
+  await setToken(token);
+  return getMe();
+}
 
 export type PairSession = { code: string; link: string };
 
@@ -12,15 +30,22 @@ export async function startPairing(): Promise<PairSession> {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Poll until the user taps Start in the bot (which approves the code and yields a token).
+// Transient network errors are swallowed and retried — only "expired"/timeout stop the loop,
+// so a flaky connection doesn't abort a pairing the user is mid-way through.
 export async function pollPairing(code: string, timeoutMs = 300000): Promise<Me> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const r = await api<{ status: string; token?: string; user?: any }>(`pair/poll?code=${encodeURIComponent(code)}`);
-    if (r.status === "ok" && r.token) {
-      await setToken(r.token);
-      return api<Me>("me");
+    try {
+      const r = await api<{ status: string; token?: string; user?: any }>(`pair/poll?code=${encodeURIComponent(code)}`);
+      if (r.status === "ok" && r.token) {
+        await setToken(r.token);
+        return api<Me>("me");
+      }
+      if (r.status === "expired") throw new Error("expired");
+    } catch (e: any) {
+      if (e?.message === "expired") throw e; // server says the code is gone — stop
+      // otherwise transient (network blip) — keep polling
     }
-    if (r.status === "expired") throw new Error("expired");
     await sleep(2000);
   }
   throw new Error("timeout");

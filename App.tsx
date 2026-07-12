@@ -6,8 +6,10 @@ import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
+import * as Linking from "expo-linking";
 import { theme } from "./src/theme";
 import { getMe, getToken, AuthError, Me } from "./src/api";
+import { tokenFromUrl, loginWithToken } from "./src/auth";
 import { PlayerProvider } from "./src/player";
 import { ToastProvider } from "./src/ui";
 import { SheetProvider } from "./src/sheet";
@@ -70,6 +72,11 @@ export default function App() {
 
   const boot = useCallback(async () => {
     try {
+      const linkToken = tokenFromUrl(await Linking.getInitialURL());
+      if (linkToken) {
+        setMe(await loginWithToken(linkToken));
+        return;
+      }
       const t = await getToken();
       if (t) setMe(await getMe());
     } catch (e) {
@@ -80,6 +87,17 @@ export default function App() {
   }, []);
 
   useEffect(() => { boot(); }, [boot]);
+
+  // handle a token deep link while the app is already open
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", async ({ url }) => {
+      const t = tokenFromUrl(url);
+      if (t) {
+        try { setMe(await loginWithToken(t)); } catch {}
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!ready) {
     return (
