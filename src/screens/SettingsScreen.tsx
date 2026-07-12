@@ -12,30 +12,6 @@ const googleConfigured = !!(extra.googleExpoClientId || extra.googleIosClientId 
 
 export default function SettingsScreen({ navigation, me, setMe }: { navigation: any; me: Me; setMe: (m: Me | null) => void }) {
   const insets = useSafeAreaInsets();
-  const [busy, setBusy] = useState(false);
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: extra.googleExpoClientId || undefined,
-    iosClientId: extra.googleIosClientId || undefined,
-    androidClientId: extra.googleAndroidClientId || undefined,
-    webClientId: extra.googleWebClientId || undefined,
-  });
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const idToken = response.authentication?.idToken || (response.params as any)?.id_token;
-      if (idToken) {
-        setBusy(true);
-        googleLink(idToken)
-          .then(async () => {
-            setMe(await api<Me>("me"));
-            Alert.alert("گوگل", "حساب گوگل وصل شد. حالا از هر دستگاهی با گوگل وارد شو.");
-          })
-          .catch(() => Alert.alert("گوگل", "اتصال حساب گوگل انجام نشد."))
-          .finally(() => setBusy(false));
-      }
-    }
-  }, [response]);
 
   const onLogout = async () => {
     await logout();
@@ -59,20 +35,49 @@ export default function SettingsScreen({ navigation, me, setMe }: { navigation: 
       <View style={styles.card}>
         <Text style={styles.label}>حساب گوگل</Text>
         <Text style={styles.sub}>{me.google_linked ? "وصل شده ✓ — از هر دستگاهی با گوگل وارد شو" : "وصل نیست"}</Text>
-        {!me.google_linked && (
-          <TouchableOpacity
-            style={[styles.btn, (!googleConfigured || !request) && styles.disabled]}
-            onPress={() => promptAsync()}
-            disabled={busy || !googleConfigured || !request}
-          >
-            {busy ? <ActivityIndicator color={theme.text} /> : <Text style={styles.btnTxt}>اتصال حساب گوگل</Text>}
-          </TouchableOpacity>
-        )}
+        {!me.google_linked && googleConfigured && <GoogleLinkButton setMe={setMe} />}
         {!googleConfigured && <Text style={styles.warn}>برای فعال‌شدن، Google OAuth client id توی app.json ست بشه.</Text>}
       </View>
 
       <TouchableOpacity style={styles.logout} onPress={onLogout}><Text style={styles.logoutTxt}>خروج</Text></TouchableOpacity>
     </View>
+  );
+}
+
+// Google auth hook lives here so it only mounts when client IDs are configured.
+function GoogleLinkButton({ setMe }: { setMe: (m: Me | null) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: extra.googleExpoClientId || undefined,
+    iosClientId: extra.googleIosClientId || undefined,
+    androidClientId: extra.googleAndroidClientId || undefined,
+    webClientId: extra.googleWebClientId || undefined,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const idToken = response.authentication?.idToken || (response.params as any)?.id_token;
+      if (idToken) {
+        setBusy(true);
+        googleLink(idToken)
+          .then(async () => {
+            setMe(await api<Me>("me"));
+            Alert.alert("گوگل", "حساب گوگل وصل شد. حالا از هر دستگاهی با گوگل وارد شو.");
+          })
+          .catch(() => Alert.alert("گوگل", "اتصال حساب گوگل انجام نشد."))
+          .finally(() => setBusy(false));
+      }
+    }
+  }, [response]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.btn, !request && styles.disabled]}
+      onPress={() => promptAsync()}
+      disabled={busy || !request}
+    >
+      {busy ? <ActivityIndicator color={theme.text} /> : <Text style={styles.btnTxt}>اتصال حساب گوگل</Text>}
+    </TouchableOpacity>
   );
 }
 

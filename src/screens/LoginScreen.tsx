@@ -12,26 +12,6 @@ const googleConfigured = !!(extra.googleExpoClientId || extra.googleIosClientId 
 export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => void }) {
   const [busy, setBusy] = useState<"tg" | "google" | null>(null);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: extra.googleExpoClientId || undefined,
-    iosClientId: extra.googleIosClientId || undefined,
-    androidClientId: extra.googleAndroidClientId || undefined,
-    webClientId: extra.googleWebClientId || undefined,
-  });
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const idToken = response.authentication?.idToken || (response.params as any)?.id_token;
-      if (idToken) {
-        setBusy("google");
-        googleLogin(idToken)
-          .then(onSignedIn)
-          .catch(() => Alert.alert("گوگل", "این حساب گوگل هنوز به هیچ اکانتی وصل نشده. اول با تلگرام وارد شو، بعد از تنظیمات گوگل رو وصل کن."))
-          .finally(() => setBusy(null));
-      }
-    }
-  }, [response]);
-
   const onTelegram = async () => {
     setBusy("tg");
     try {
@@ -56,19 +36,59 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
         {busy === "tg" ? <ActivityIndicator color="#17130c" /> : <Text style={styles.tgTxt}>اتصال با تلگرام</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.btn, styles.google, (!googleConfigured || !request) && styles.disabled]}
-        onPress={() => promptAsync()}
-        disabled={busy !== null || !googleConfigured || !request}
-        activeOpacity={0.85}
-      >
-        {busy === "google" ? <ActivityIndicator color={theme.text} /> : <Text style={styles.googleTxt}>ورود با گوگل</Text>}
-      </TouchableOpacity>
+      {googleConfigured ? (
+        <GoogleLoginButton busy={busy} setBusy={setBusy} onSignedIn={onSignedIn} />
+      ) : (
+        <View style={[styles.btn, styles.google, styles.disabled]}>
+          <Text style={styles.googleTxt}>ورود با گوگل</Text>
+        </View>
+      )}
 
       <Text style={styles.hint}>
         «اتصال با تلگرام» بازت می‌کنه تو رباتِ @OrvMusicBot؛ Start رو بزن و برگرد — کتابخونه‌ت خودکار سینک می‌شه.
       </Text>
     </View>
+  );
+}
+
+// Isolated so the Google auth hook is only ever mounted when client IDs exist
+// (useAuthRequest throws invariantClientId otherwise, which would crash the app).
+function GoogleLoginButton({
+  busy, setBusy, onSignedIn,
+}: {
+  busy: "tg" | "google" | null;
+  setBusy: (v: "tg" | "google" | null) => void;
+  onSignedIn: (m: Me) => void;
+}) {
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: extra.googleExpoClientId || undefined,
+    iosClientId: extra.googleIosClientId || undefined,
+    androidClientId: extra.googleAndroidClientId || undefined,
+    webClientId: extra.googleWebClientId || undefined,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const idToken = response.authentication?.idToken || (response.params as any)?.id_token;
+      if (idToken) {
+        setBusy("google");
+        googleLogin(idToken)
+          .then(onSignedIn)
+          .catch(() => Alert.alert("گوگل", "این حساب گوگل هنوز به هیچ اکانتی وصل نشده. اول با تلگرام وارد شو، بعد از تنظیمات گوگل رو وصل کن."))
+          .finally(() => setBusy(null));
+      }
+    }
+  }, [response]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.btn, styles.google, !request && styles.disabled]}
+      onPress={() => promptAsync()}
+      disabled={busy !== null || !request}
+      activeOpacity={0.85}
+    >
+      {busy === "google" ? <ActivityIndicator color={theme.text} /> : <Text style={styles.googleTxt}>ورود با گوگل</Text>}
+    </TouchableOpacity>
   );
 }
 
