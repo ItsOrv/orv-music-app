@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Orv Music",
+    "slug": "orv-music",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "orvmusic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0e0d0b",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0e0d0b"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.orvteam.music",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.orvteam.music",
+      "permissions": ["INTERNET", "FOREGROUND_SERVICE"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0e0d0b"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiBase": "https://orvteam.com/music",
+      "googleExpoClientId": "",
+      "googleIosClientId": "",
+      "googleAndroidClientId": "",
+      "googleWebClientId": ""
+    }
+  }
+}
