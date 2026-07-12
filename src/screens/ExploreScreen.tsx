@@ -97,6 +97,15 @@ export default function ExploreScreen() {
             </ScrollView>
           )}
 
+          {foryou.for_you?.filter((s) => s.tracks?.length).map((s) => (
+            <View key={s.seed}>
+              <SectionHeader>{`چون ${s.seed} گوش می‌دی`}</SectionHeader>
+              {s.tracks.map((t, i) => (
+                <TrackRow key={t.ext_id || i} track={t} active={sameTrack(player.current, t)} onPress={() => player.playQueue(s.tracks, i)} right={addBtn(t)} />
+              ))}
+            </View>
+          ))}
+
           {!!foryou.chart?.length && (
             <>
               <SectionHeader>داغِ الان</SectionHeader>

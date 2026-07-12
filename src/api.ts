@@ -114,6 +114,7 @@ export type Me = {
 
 export type Playlist = { id: number; name: string; count: number };
 export type ForYou = {
+  for_you?: { seed: string; tracks: Track[] }[];
   chart: Track[];
   new_releases: { album_id: number; title: string; artist: string; cover: string }[];
   genres: { id: number; name: string; cover: string }[];
