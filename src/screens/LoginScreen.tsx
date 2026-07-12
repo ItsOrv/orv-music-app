@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import * as Linking from "expo-linking";
+import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import * as Google from "expo-auth-session/providers/google";
 import { theme } from "../theme";
-import { pairWithTelegram, googleLogin } from "../auth";
+import { startPairing, pollPairing, googleLogin } from "../auth";
 import { Me } from "../api";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
@@ -11,17 +13,31 @@ const googleConfigured = !!(extra.googleExpoClientId || extra.googleIosClientId 
 
 export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => void }) {
   const [busy, setBusy] = useState<"tg" | "google" | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const onTelegram = async () => {
     setBusy("tg");
+    setCopied(false);
     try {
-      const me = await pairWithTelegram();
+      const s = await startPairing();
+      setLink(s.link);
+      Linking.openURL(s.link).catch(() => {}); // best-effort; user can also copy the link below
+      const me = await pollPairing(s.code); // waits until the user taps Start in the bot
       onSignedIn(me);
     } catch (e: any) {
-      Alert.alert("اتصال", e?.message === "expired" ? "کد منقضی شد، دوباره امتحان کن." : "اتصال کامل نشد، دوباره امتحان کن.");
+      Alert.alert("اتصال", e?.message === "expired" ? "کد منقضی شد، دوباره «اتصال با تلگرام» رو بزن." : "اتصال کامل نشد، دوباره امتحان کن.");
+      setLink(null);
     } finally {
       setBusy(null);
     }
+  };
+
+  const copy = async () => {
+    if (!link) return;
+    await Clipboard.setStringAsync(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -36,17 +52,39 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
         {busy === "tg" ? <ActivityIndicator color="#17130c" /> : <Text style={styles.tgTxt}>اتصال با تلگرام</Text>}
       </TouchableOpacity>
 
-      {googleConfigured ? (
+      {link && (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>اگه تلگرام خودش باز نشد:</Text>
+          <Text style={styles.panelStep}>لینکو کپی کن، تو تلگرام بازش کن (یا برای ربات بفرست) و Start رو بزن. بعد برگرد همینجا.</Text>
+          <Text style={styles.linkBox} selectable numberOfLines={1} ellipsizeMode="middle">{link}</Text>
+          <View style={styles.panelRow}>
+            <TouchableOpacity style={[styles.smBtn, styles.smBtnGold]} onPress={copy}>
+              <Text style={styles.smBtnGoldTxt}>{copied ? "کپی شد ✓" : "کپی لینک"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.smBtn} onPress={() => link && Linking.openURL(link).catch(() => {})}>
+              <Text style={styles.smBtnTxt}>باز کردن تلگرام</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.waiting}>
+            <ActivityIndicator color={theme.gold} size="small" />
+            <Text style={styles.waitingTxt}>منتظرِ تایید تو تلگرام…</Text>
+          </View>
+        </View>
+      )}
+
+      {!link && (googleConfigured ? (
         <GoogleLoginButton busy={busy} setBusy={setBusy} onSignedIn={onSignedIn} />
       ) : (
         <View style={[styles.btn, styles.google, styles.disabled]}>
           <Text style={styles.googleTxt}>ورود با گوگل</Text>
         </View>
-      )}
+      ))}
 
-      <Text style={styles.hint}>
-        «اتصال با تلگرام» بازت می‌کنه تو رباتِ @OrvMusicBot؛ Start رو بزن و برگرد — کتابخونه‌ت خودکار سینک می‌شه.
-      </Text>
+      {!link && (
+        <Text style={styles.hint}>
+          «اتصال با تلگرام» بازت می‌کنه تو رباتِ @OrvMusicBot؛ Start رو بزن و برگرد — کتابخونه‌ت خودکار سینک می‌شه.
+        </Text>
+      )}
     </View>
   );
 }
@@ -105,4 +143,15 @@ const styles = StyleSheet.create({
   googleTxt: { color: theme.text, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.4 },
   hint: { color: theme.muted2, fontSize: 12, textAlign: "center", lineHeight: 20, marginTop: 14 },
+  panel: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 16, gap: 10 },
+  panelTitle: { color: theme.text, fontSize: 14, fontWeight: "800", textAlign: "right" },
+  panelStep: { color: theme.muted, fontSize: 12.5, lineHeight: 20, textAlign: "right" },
+  linkBox: { color: theme.gold, fontSize: 12.5, backgroundColor: theme.bg2, borderRadius: theme.radiusSm, borderWidth: 1, borderColor: theme.line, paddingHorizontal: 12, paddingVertical: 11, textAlign: "left" },
+  panelRow: { flexDirection: "row", gap: 8 },
+  smBtn: { flex: 1, height: 44, borderRadius: theme.radiusSm, alignItems: "center", justifyContent: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line },
+  smBtnTxt: { color: theme.text, fontSize: 13.5, fontWeight: "700" },
+  smBtnGold: { backgroundColor: theme.gold, borderColor: theme.gold },
+  smBtnGoldTxt: { color: "#17130c", fontSize: 13.5, fontWeight: "800" },
+  waiting: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 2 },
+  waitingTxt: { color: theme.muted, fontSize: 12.5 },
 });
