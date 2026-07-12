@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import { storageGet, storageSet, storageDelete } from "./storage";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
 export const API_BASE = (extra.apiBase || "https://orvteam.com/music").replace(/\/$/, "");
@@ -9,7 +9,7 @@ let cachedToken: string | null = null;
 
 export async function getToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
-  cachedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+  cachedToken = await storageGet(TOKEN_KEY);
   return cachedToken;
 }
 
@@ -19,12 +19,12 @@ export function getTokenSync(): string {
 
 export async function setToken(token: string): Promise<void> {
   cachedToken = token;
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  await storageSet(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
   cachedToken = null;
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await storageDelete(TOKEN_KEY);
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
