@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { Audio, AVPlaybackStatus } from "expo-av";
-import { Track, trackStreamUrl } from "./api";
+import { Track, trackStreamUrl, trackKey } from "./api";
 
 type Repeat = "off" | "all" | "one";
 
@@ -32,6 +32,8 @@ export const usePlayer = () => {
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const sound = useRef<Audio.Sound | null>(null);
+  // a preloaded, already-buffered Sound for the upcoming track, so «بعدی»/auto-advance is instant
+  const nextSound = useRef<{ key: string; sound: Audio.Sound } | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [index, setIndex] = useState(-1);
   const [isPlaying, setPlaying] = useState(false);
@@ -56,6 +58,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
     return () => {
       sound.current?.unloadAsync().catch(() => {});
+      nextSound.current?.sound.unloadAsync().catch(() => {});
     };
   }, []);
 
@@ -78,30 +81,79 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // The index that WOULD play next in sequential mode (null for shuffle / repeat-one / end).
+  const peekNextIdx = (): number | null => {
+    const { queue: q, index: idx, shuffle: sh, repeat: rp } = st.current;
+    if (!q.length || rp === "one" || sh) return null;
+    if (idx < q.length - 1) return idx + 1;
+    if (rp === "all") return 0;
+    return null;
+  };
+
+  // Just resolve + touch the first byte, warming the server's yt-dlp URL cache (the real latency).
+  const warm = async (t: Track) => {
+    try {
+      const uri = await trackStreamUrl(t);
+      if (uri && !uri.startsWith("file")) fetch(uri, { headers: { Range: "bytes=0-1" } }).catch(() => {});
+    } catch (e) {}
+  };
+
+  // Preload (buffer) the upcoming track so advancing to it is instant.
+  const prefetchNext = useCallback(async () => {
+    const { queue: q, shuffle: sh, repeat: rp } = st.current;
+    if (!q.length || rp === "one") return;
+    if (sh) {
+      const cand = bag.current.length ? q[bag.current[bag.current.length - 1]] : null;
+      if (cand) warm(cand);  // random next → just warm, don't buffer the wrong track
+      return;
+    }
+    const ni = peekNextIdx();
+    if (ni == null) return;
+    const track = q[ni];
+    const key = trackKey(track);
+    if (nextSound.current?.key === key) return;                 // already preloaded
+    if (nextSound.current) { const old = nextSound.current; nextSound.current = null; old.sound.unloadAsync().catch(() => {}); }
+    try {
+      const uri = await trackStreamUrl(track);
+      if (!uri || peekNextIdx() !== ni) return;                 // user moved on
+      const { sound: s } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false, progressUpdateIntervalMillis: 500 });
+      if (peekNextIdx() !== ni || trackKey(st.current.queue[ni] || ({} as Track)) !== key) { s.unloadAsync().catch(() => {}); return; }
+      nextSound.current = { key, sound: s };
+    } catch (e) {}
+  }, []);
+
   const loadAt = useCallback(async (i: number, q: Track[]) => {
     const track = q[i];
     if (!track) return;
     setLoading(true);
     setIndex(i);
     try {
-      if (sound.current) {
-        await sound.current.unloadAsync();
-        sound.current = null;
+      const pre = nextSound.current;
+      if (pre && pre.key === trackKey(track)) {
+        // reuse the buffered next track — instant start
+        nextSound.current = null;
+        if (sound.current) { const old = sound.current; sound.current = null; await old.unloadAsync().catch(() => {}); }
+        sound.current = pre.sound;
+        pre.sound.setOnPlaybackStatusUpdate(onStatus);
+        await pre.sound.playAsync();
+      } else {
+        if (sound.current) { await sound.current.unloadAsync(); sound.current = null; }
+        const uri = await trackStreamUrl(track);
+        if (!uri) throw new Error("no stream");
+        const { sound: s } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true, progressUpdateIntervalMillis: 500 },
+          onStatus
+        );
+        sound.current = s;
       }
-      const uri = await trackStreamUrl(track);
-      if (!uri) throw new Error("no stream");
-      const { sound: s } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, progressUpdateIntervalMillis: 500 },
-        onStatus
-      );
-      sound.current = s;
     } catch (e) {
       setPlaying(false);
     } finally {
       setLoading(false);
     }
-  }, [onStatus]);
+    void prefetchNext();  // buffer the following track while this one plays
+  }, [onStatus, prefetchNext]);
 
   const playQueue = useCallback(async (list: Track[], i: number) => {
     setQueue(list);
