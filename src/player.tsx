@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { Audio, AVPlaybackStatus } from "expo-av";
-import { Track, trackStreamUrl, trackKey } from "./api";
+import { Track, trackStreamUrl } from "./api";
 
 type Repeat = "off" | "all" | "one";
 
@@ -32,8 +32,6 @@ export const usePlayer = () => {
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const sound = useRef<Audio.Sound | null>(null);
-  // a preloaded, already-buffered Sound for the upcoming track, so «بعدی»/auto-advance is instant
-  const nextSound = useRef<{ key: string; sound: Audio.Sound } | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [index, setIndex] = useState(-1);
   const [isPlaying, setPlaying] = useState(false);
@@ -58,7 +56,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
     return () => {
       sound.current?.unloadAsync().catch(() => {});
-      nextSound.current?.sound.unloadAsync().catch(() => {});
     };
   }, []);
 
@@ -98,28 +95,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
-  // Preload (buffer) the upcoming track so advancing to it is instant.
+  // Warm the upcoming track's server URL cache so advancing starts without the resolve delay.
+  // Deliberately does NOT buffer the whole song — that doubled users' data usage.
   const prefetchNext = useCallback(async () => {
     const { queue: q, shuffle: sh, repeat: rp } = st.current;
     if (!q.length || rp === "one") return;
     if (sh) {
       const cand = bag.current.length ? q[bag.current[bag.current.length - 1]] : null;
-      if (cand) warm(cand);  // random next → just warm, don't buffer the wrong track
+      if (cand) warm(cand);
       return;
     }
     const ni = peekNextIdx();
     if (ni == null) return;
-    const track = q[ni];
-    const key = trackKey(track);
-    if (nextSound.current?.key === key) return;                 // already preloaded
-    if (nextSound.current) { const old = nextSound.current; nextSound.current = null; old.sound.unloadAsync().catch(() => {}); }
-    try {
-      const uri = await trackStreamUrl(track);
-      if (!uri || peekNextIdx() !== ni) return;                 // user moved on
-      const { sound: s } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false, progressUpdateIntervalMillis: 500 });
-      if (peekNextIdx() !== ni || trackKey(st.current.queue[ni] || ({} as Track)) !== key) { s.unloadAsync().catch(() => {}); return; }
-      nextSound.current = { key, sound: s };
-    } catch (e) {}
+    warm(q[ni]);
   }, []);
 
   const loadAt = useCallback(async (i: number, q: Track[]) => {
@@ -128,25 +116,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setIndex(i);
     try {
-      const pre = nextSound.current;
-      if (pre && pre.key === trackKey(track)) {
-        // reuse the buffered next track — instant start
-        nextSound.current = null;
-        if (sound.current) { const old = sound.current; sound.current = null; await old.unloadAsync().catch(() => {}); }
-        sound.current = pre.sound;
-        pre.sound.setOnPlaybackStatusUpdate(onStatus);
-        await pre.sound.playAsync();
-      } else {
-        if (sound.current) { await sound.current.unloadAsync(); sound.current = null; }
-        const uri = await trackStreamUrl(track);
-        if (!uri) throw new Error("no stream");
-        const { sound: s } = await Audio.Sound.createAsync(
-          { uri },
-          { shouldPlay: true, progressUpdateIntervalMillis: 500 },
-          onStatus
-        );
-        sound.current = s;
-      }
+      if (sound.current) { await sound.current.unloadAsync(); sound.current = null; }
+      const uri = await trackStreamUrl(track);
+      if (!uri) throw new Error("no stream");
+      const { sound: s } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true, progressUpdateIntervalMillis: 500 },
+        onStatus
+      );
+      sound.current = s;
     } catch (e) {
       setPlaying(false);
     } finally {
