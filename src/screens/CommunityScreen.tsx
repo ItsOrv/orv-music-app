@@ -1,23 +1,26 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../theme";
-import { getTracks, Track, sameTrack } from "../api";
+import { communityTracks, Track, sameTrack } from "../api";
 import { usePlayer } from "../player";
-import { TrackRow } from "../ui";
+import { TrackRow, iconBtn } from "../ui";
 import { useTrackActions } from "../actions";
 
-export default function LibraryScreen({ navigation }: any) {
+export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const player = usePlayer();
-  const { libraryRowMenu } = useTrackActions();
+  const { saveCommunity } = useTrackActions();
 
   const load = useCallback(async (query = "") => {
     setLoading(true);
-    try { setTracks(await getTracks(query)); } catch { setTracks([]); } finally { setLoading(false); }
+    try {
+      const list = (await communityTracks(query)).map((t) => ({ ...t, community: true as const }));
+      setTracks(list);
+    } catch { setTracks([]); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -25,30 +28,31 @@ export default function LibraryScreen({ navigation }: any) {
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>کتابخونه‌ی من</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Settings")}><Text style={styles.gear}>⚙</Text></TouchableOpacity>
-      </View>
-      <TextInput style={styles.search} placeholder="جستجو…" placeholderTextColor={theme.muted2} value={q} onChangeText={setQ} />
+      <Text style={styles.title}>عمومی</Text>
+      <TextInput style={styles.search} placeholder="جستجو تو آهنگای همه…" placeholderTextColor={theme.muted2} value={q} onChangeText={setQ} />
 
       {loading ? (
         <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} />
       ) : tracks.length === 0 ? (
-        <Text style={styles.empty}>هنوز آهنگی نیست.{"\n"}تو رباتِ @OrvMusicBot آهنگاتو forward کن، یا از تبِ «اکسپلور» اضافه کن.</Text>
+        <Text style={styles.empty}>چیزی نبود. آهنگایی که کاربرا برای ربات می‌فرستن اینجا برای همه به اشتراک گذاشته می‌شن.</Text>
       ) : (
         <FlatList
           data={tracks}
-          keyExtractor={(t) => String(t.id)}
+          keyExtractor={(t, i) => "c" + (t.id ?? i)}
           renderItem={({ item, index }) => (
             <TrackRow
               track={item}
               active={sameTrack(player.current, item)}
               onPress={() => player.playQueue(tracks, index)}
-              right={<TouchableOpacity onPress={() => libraryRowMenu(item, () => load(q.trim()))} hitSlop={10}><Text style={styles.menu}>⋯</Text></TouchableOpacity>}
+              right={
+                <View style={styles.right}>
+                  {!!item.plays && <Text style={iconBtn.plays}>▶ {item.plays}</Text>}
+                  <TouchableOpacity onPress={() => saveCommunity(item)} hitSlop={10}><Text style={styles.add}>＋</Text></TouchableOpacity>
+                </View>
+              }
             />
           )}
           contentContainerStyle={{ paddingBottom: 150 }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={() => load(q.trim())} tintColor={theme.gold} />}
         />
       )}
     </View>
@@ -57,10 +61,9 @@ export default function LibraryScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 16 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title: { color: theme.text, fontSize: 20, fontWeight: "800" },
-  gear: { color: theme.muted, fontSize: 22 },
+  title: { color: theme.text, fontSize: 20, fontWeight: "800", marginBottom: 12 },
   search: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 14, height: 44, marginBottom: 4, textAlign: "right" },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },
-  menu: { color: theme.muted, fontSize: 22, paddingHorizontal: 8 },
+  right: { flexDirection: "row", alignItems: "center", gap: 6 },
+  add: { color: theme.gold, fontSize: 24, fontWeight: "700", paddingHorizontal: 6 },
 });

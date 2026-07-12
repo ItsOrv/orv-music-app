@@ -82,18 +82,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const track = q[i];
     if (!track) return;
     setLoading(true);
+    setIndex(i);
     try {
       if (sound.current) {
         await sound.current.unloadAsync();
         sound.current = null;
       }
+      const uri = await trackStreamUrl(track);
+      if (!uri) throw new Error("no stream");
       const { sound: s } = await Audio.Sound.createAsync(
-        { uri: trackStreamUrl(track) },
+        { uri },
         { shouldPlay: true, progressUpdateIntervalMillis: 500 },
         onStatus
       );
       sound.current = s;
-      setIndex(i);
     } catch (e) {
       setPlaying(false);
     } finally {

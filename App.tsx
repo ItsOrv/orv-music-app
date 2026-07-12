@@ -1,26 +1,68 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, View, StyleSheet } from "react-native";
+import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { theme } from "./src/theme";
-import { api, getToken, AuthError, Me } from "./src/api";
+import { getMe, getToken, AuthError, Me } from "./src/api";
 import { PlayerProvider } from "./src/player";
+import { ToastProvider } from "./src/ui";
+import { SheetProvider } from "./src/sheet";
+import { PromptProvider } from "./src/prompt";
+import PlayerBar from "./src/PlayerBar";
 import LoginScreen from "./src/screens/LoginScreen";
 import LibraryScreen from "./src/screens/LibraryScreen";
+import ExploreScreen from "./src/screens/ExploreScreen";
+import CommunityScreen from "./src/screens/CommunityScreen";
+import PlaylistsScreen from "./src/screens/PlaylistsScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 
-export type AppSession = { me: Me | null; setMe: (m: Me | null) => void };
-
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const navTheme = {
   ...DefaultTheme,
   dark: true,
   colors: { ...DefaultTheme.colors, background: theme.bg, card: theme.bg, text: theme.text, border: theme.line, primary: theme.gold },
 };
+
+const TABS: { name: string; label: string; icon: string; component: React.ComponentType<any> }[] = [
+  { name: "Library", label: "کتابخونه", icon: "♪", component: LibraryScreen },
+  { name: "Explore", label: "اکسپلور", icon: "◎", component: ExploreScreen },
+  { name: "Community", label: "عمومی", icon: "◍", component: CommunityScreen },
+  { name: "Playlists", label: "پلی‌لیست", icon: "≣", component: PlaylistsScreen },
+];
+
+function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const tabH = 56 + insets.bottom;
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <Tab.Navigator
+        screenOptions={({ route }) => {
+          const t = TABS.find((x) => x.name === route.name)!;
+          return {
+            headerShown: false,
+            tabBarActiveTintColor: theme.gold,
+            tabBarInactiveTintColor: theme.muted2,
+            tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.line, height: tabH, paddingTop: 6, paddingBottom: insets.bottom },
+            tabBarLabelStyle: { fontSize: 11 },
+            tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>{t.icon}</Text>,
+            tabBarLabel: t.label,
+          };
+        }}
+      >
+        {TABS.map((t) => (
+          <Tab.Screen key={t.name} name={t.name} component={t.component} />
+        ))}
+      </Tab.Navigator>
+      <PlayerBar bottomOffset={tabH + 8} />
+    </View>
+  );
+}
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -29,7 +71,7 @@ export default function App() {
   const boot = useCallback(async () => {
     try {
       const t = await getToken();
-      if (t) setMe(await api<Me>("me"));
+      if (t) setMe(await getMe());
     } catch (e) {
       if (e instanceof AuthError) setMe(null);
     } finally {
@@ -37,9 +79,7 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    boot();
-  }, [boot]);
+  useEffect(() => { boot(); }, [boot]);
 
   if (!ready) {
     return (
@@ -53,26 +93,30 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <PlayerProvider>
-        <NavigationContainer theme={navTheme}>
-          <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
-            {me ? (
-              <>
-                <Stack.Screen name="Library">
-                  {(props) => <LibraryScreen {...props} me={me} setMe={setMe} />}
-                </Stack.Screen>
-                <Stack.Screen name="Settings">
-                  {(props) => <SettingsScreen {...props} me={me} setMe={setMe} />}
-                </Stack.Screen>
-              </>
-            ) : (
-              <Stack.Screen name="Login">
-                {(props) => <LoginScreen {...props} onSignedIn={setMe} />}
-              </Stack.Screen>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </PlayerProvider>
+      <ToastProvider>
+        <SheetProvider>
+          <PromptProvider>
+            <PlayerProvider>
+              <NavigationContainer theme={navTheme}>
+                <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+                  {me ? (
+                    <>
+                      <Stack.Screen name="Main" component={MainTabs} />
+                      <Stack.Screen name="Settings">
+                        {(props) => <SettingsScreen {...props} me={me} setMe={setMe} />}
+                      </Stack.Screen>
+                    </>
+                  ) : (
+                    <Stack.Screen name="Login">
+                      {(props) => <LoginScreen {...props} onSignedIn={setMe} />}
+                    </Stack.Screen>
+                  )}
+                </Stack.Navigator>
+              </NavigationContainer>
+            </PlayerProvider>
+          </PromptProvider>
+        </SheetProvider>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

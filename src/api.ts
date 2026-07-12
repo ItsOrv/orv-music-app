@@ -13,7 +13,6 @@ export async function getToken(): Promise<string | null> {
   return cachedToken;
 }
 
-// Synchronous read of the in-memory token — valid after getToken()/setToken() has run once.
 export function getTokenSync(): string {
   return cachedToken || "";
 }
@@ -28,7 +27,6 @@ export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
-// The server accepts the web-token in the X-Init-Data header (same slot as Telegram initData).
 async function authHeaders(): Promise<Record<string, string>> {
   const t = await getToken();
   return t ? { "X-Init-Data": t } : {};
@@ -54,32 +52,58 @@ export class AuthError extends Error {
   }
 }
 
-// Streaming URL for a track. The token rides in the query so the native <Audio> player can fetch it.
-export function trackStreamUrl(track: Track): string {
-  const t = encodeURIComponent(getTokenSync());
-  const base = track.community ? "community/stream" : "stream";
-  return `${API_BASE}/api/${base}/${track.id}?auth=${t}`;
-}
-
-export function coverUrl(track: Track): string | null {
-  if (track.cover_url) return track.cover_url;
-  const t = encodeURIComponent(getTokenSync());
-  if (track.community) return `${API_BASE}/api/community/cover/${track.id}?auth=${t}`;
-  if (track.has_cover) return `${API_BASE}/api/cover/${track.id}?auth=${t}`;
-  return null;
-}
-
+// ---------- track model (mirrors the web mini-app) ----------
 export type Track = {
-  id: number;
+  id?: number | null;        // set for library tracks
   title: string | null;
   artist: string | null;
   duration?: number;
-  cover_url?: string | null;
-  has_cover?: boolean;
+  source?: string;           // "tg" | "yt" | "dz" | "lib"
+  ext_id?: string;           // deezer/yt id for discover tracks
+  cover?: string | null;     // direct cover url (discover)
+  cover_url?: string | null; // stored cover url (library yt tracks)
+  has_cover?: boolean;       // library tg track cover via /cover/{id}
+  external?: boolean;        // discover result (deezer)
+  preview?: string | null;   // deezer 30s preview fallback
   community?: boolean;
   plays?: number;
 };
 
+// unique id used for dedup / "is this the playing track"
+export function trackKey(t: Track): string {
+  if (t.community) return "c" + t.id;
+  if (t.id != null) return "l" + t.id;
+  return (t.source || "x") + ":" + t.ext_id;
+}
+
+export function sameTrack(a: Track | null, b: Track | null): boolean {
+  return !!a && !!b && trackKey(a) === trackKey(b);
+}
+
+export function coverUrl(t: Track): string | null {
+  const auth = encodeURIComponent(getTokenSync());
+  if (t.cover_url) return t.cover_url;
+  if (t.external) return t.cover || null;
+  if (t.community) return t.has_cover ? `${API_BASE}/api/community/cover/${t.id}?auth=${auth}` : null;
+  if (t.has_cover) return `${API_BASE}/api/cover/${t.id}?auth=${auth}`;
+  return null;
+}
+
+// Build the streaming URL. Discover (deezer) tracks are resolved to a YouTube stream on the fly.
+export async function trackStreamUrl(t: Track): Promise<string | null> {
+  const auth = encodeURIComponent(getTokenSync());
+  if (t.community) return `${API_BASE}/api/community/stream/${t.id}?auth=${auth}`;
+  if (t.id != null) return `${API_BASE}/api/stream/${t.id}?auth=${auth}`;
+  if (t.source === "yt" && t.ext_id) return `${API_BASE}/api/yt/stream/${t.ext_id}?auth=${auth}`;
+  try {
+    const r = await api<{ ext_id: string }>(`yt/resolve?q=${encodeURIComponent(`${t.artist || ""} ${t.title || ""}`.trim())}`);
+    return `${API_BASE}/api/yt/stream/${r.ext_id}?auth=${auth}`;
+  } catch {
+    return t.preview || null;
+  }
+}
+
+// ---------- endpoint helpers ----------
 export type Me = {
   id: number;
   username: string | null;
@@ -87,3 +111,47 @@ export type Me = {
   tracks: number;
   google_linked: boolean;
 };
+
+export type Playlist = { id: number; name: string; count: number };
+export type ForYou = {
+  chart: Track[];
+  new_releases: { album_id: number; title: string; artist: string; cover: string }[];
+  genres: { id: number; name: string; cover: string }[];
+};
+
+export const getMe = () => api<Me>("me");
+export const getTracks = (q?: string) => api<Track[]>(`tracks${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+export const deleteTrack = (id: number) => api(`tracks/${id}`, { method: "DELETE" });
+
+export const discoverSearch = (q: string) => api<Track[]>(`discover/search?q=${encodeURIComponent(q)}`);
+export const discoverForYou = () => api<ForYou>("discover/foryou");
+export const discoverGenre = (id: number) => api<Track[]>(`discover/genre/${id}`);
+export const discoverAlbum = (id: number) => api<Track[]>(`discover/album/${id}`);
+
+export const communityTracks = (q?: string) => api<Track[]>(`community/tracks${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+export const communitySave = (trackId: number) => api<{ id: number }>("community/save", { method: "POST", body: JSON.stringify({ track_id: trackId }) });
+
+export const listPlaylists = () => api<Playlist[]>("playlists");
+export const createPlaylist = (name: string) => api<Playlist>("playlists", { method: "POST", body: JSON.stringify({ name }) });
+export const deletePlaylist = (id: number) => api(`playlists/${id}`, { method: "DELETE" });
+export const playlistTracks = (id: number) => api<Track[]>(`playlists/${id}/tracks`);
+export const addToPlaylist = (pid: number, trackId: number) => api(`playlists/${pid}/tracks`, { method: "POST", body: JSON.stringify({ track_id: trackId }) });
+export const removeFromPlaylist = (pid: number, trackId: number) => api(`playlists/${pid}/tracks/${trackId}`, { method: "DELETE" });
+
+export const sendTrack = (trackId: number) => api("send/track", { method: "POST", body: JSON.stringify({ track_id: trackId }) });
+export const sendPlaylist = (playlistId: number) => api<{ count: number }>("send/playlist", { method: "POST", body: JSON.stringify({ playlist_id: playlistId }) });
+
+// Add a track to the library. For discover tracks, resolve to a yt id first, then persist.
+// Returns the new (or existing) library track id.
+export async function addToLibrary(t: Track): Promise<number | null> {
+  let extId = t.ext_id;
+  if (t.source !== "yt") {
+    const r = await api<{ ext_id: string }>(`yt/resolve?q=${encodeURIComponent(`${t.artist || ""} ${t.title || ""}`.trim())}`);
+    extId = r.ext_id;
+  }
+  const res = await api<{ id: number }>("library/add", {
+    method: "POST",
+    body: JSON.stringify({ ext_id: extId, title: t.title, artist: t.artist, duration: t.duration, cover: t.cover }),
+  });
+  return res?.id ?? null;
+}
