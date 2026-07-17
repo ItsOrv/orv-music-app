@@ -1,13 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  View, Text, ScrollView, FlatList, TouchableOpacity, TextInput, Image,
+  View, Text, ScrollView, FlatList, TouchableOpacity, Image,
   ActivityIndicator, StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../theme";
-import {
-  discoverSearch, discoverForYou, discoverGenre, discoverAlbum, Track, ForYou, sameTrack,
-} from "../api";
+import { discoverForYou, discoverAlbum, Track, ForYou, sameTrack } from "../api";
 import { usePlayer } from "../player";
 import { TrackRow, SectionHeader } from "../ui";
 import { useTrackActions } from "../actions";
@@ -16,8 +14,6 @@ type SubView = { title: string; tracks: Track[] } | null;
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<Track[] | null>(null);
   const [foryou, setForYou] = useState<ForYou | null>(null);
   const [sub, setSub] = useState<SubView>(null);
   const [loading, setLoading] = useState(true);
@@ -31,24 +27,10 @@ export default function ExploreScreen() {
 
   useEffect(() => { loadForYou(); }, [loadForYou]);
 
-  useEffect(() => {
-    const query = q.trim();
-    if (!query) { setResults(null); return; }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try { setResults(await discoverSearch(query)); } catch { setResults([]); } finally { setLoading(false); }
-    }, 350);
-    return () => clearTimeout(t);
-  }, [q]);
-
   const addBtn = (track: Track) => (
     <TouchableOpacity onPress={() => exploreRowMenu(track)} hitSlop={10}><Text style={styles.add}>＋</Text></TouchableOpacity>
   );
 
-  const openGenre = async (id: number, name: string) => {
-    setLoading(true);
-    try { setSub({ title: name, tracks: await discoverGenre(id) }); } catch { setSub({ title: name, tracks: [] }); } finally { setLoading(false); }
-  };
   const openAlbum = async (id: number, name: string) => {
     setLoading(true);
     try { setSub({ title: name, tracks: await discoverAlbum(id) }); } catch { setSub({ title: name, tracks: [] }); } finally { setLoading(false); }
@@ -65,7 +47,7 @@ export default function ExploreScreen() {
     />
   );
 
-  // subview: a genre or album track list
+  // subview: an album track list
   if (sub) {
     return (
       <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
@@ -79,33 +61,11 @@ export default function ExploreScreen() {
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       <Text style={styles.title}>اکسپلور</Text>
-      <TextInput style={styles.search} placeholder="جستجوی آهنگ یا خواننده…" placeholderTextColor={theme.muted2} value={q} onChangeText={setQ} />
 
-      {loading && !foryou && !results ? (
+      {loading && !foryou ? (
         <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} />
-      ) : results !== null ? (
-        results.length ? renderList(results) : <Text style={styles.empty}>چیزی پیدا نشد.</Text>
       ) : foryou ? (
         <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
-          {!!foryou.genres?.length && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              {foryou.genres.map((g) => (
-                <TouchableOpacity key={g.id} style={styles.chip} onPress={() => openGenre(g.id, g.name)}>
-                  <Text style={styles.chipTxt}>{g.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-
-          {foryou.for_you?.filter((s) => s.tracks?.length).map((s) => (
-            <View key={s.seed}>
-              <SectionHeader>{`چون ${s.seed} گوش می‌دی`}</SectionHeader>
-              {s.tracks.map((t, i) => (
-                <TrackRow key={t.ext_id || i} track={t} active={sameTrack(player.current, t)} onPress={() => player.playQueue(s.tracks, i)} right={addBtn(t)} />
-              ))}
-            </View>
-          ))}
-
           {!!foryou.chart?.length && (
             <>
               <SectionHeader>داغِ الان</SectionHeader>
@@ -142,13 +102,9 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 16 },
   title: { color: theme.text, fontSize: 20, fontWeight: "800", marginBottom: 12 },
-  search: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 14, height: 44, marginBottom: 6, textAlign: "right" },
   back: { color: theme.gold, fontSize: 15, fontWeight: "700", paddingVertical: 8, marginBottom: 4 },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },
   add: { color: theme.gold, fontSize: 24, fontWeight: "700", paddingHorizontal: 8 },
-  chips: { gap: 8, paddingVertical: 8 },
-  chip: { borderWidth: 1, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8 },
-  chipTxt: { color: theme.muted, fontSize: 12.5, fontWeight: "600" },
   albums: { gap: 12, paddingVertical: 6 },
   album: { width: 140 },
   albumCover: { width: 140, height: 140, borderRadius: theme.radius, backgroundColor: theme.card2, alignItems: "center", justifyContent: "center", overflow: "hidden" },

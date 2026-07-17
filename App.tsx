@@ -18,6 +18,7 @@ import PlayerBar from "./src/PlayerBar";
 import LoginScreen from "./src/screens/LoginScreen";
 import LibraryScreen from "./src/screens/LibraryScreen";
 import ExploreScreen from "./src/screens/ExploreScreen";
+import SearchScreen from "./src/screens/SearchScreen";
 import CommunityScreen from "./src/screens/CommunityScreen";
 import PlaylistsScreen from "./src/screens/PlaylistsScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
@@ -34,6 +35,7 @@ const navTheme = {
 const TABS: { name: string; label: string; icon: string; component: React.ComponentType<any> }[] = [
   { name: "Library", label: "کتابخونه", icon: "♪", component: LibraryScreen },
   { name: "Explore", label: "اکسپلور", icon: "◎", component: ExploreScreen },
+  { name: "Search", label: "جستجو", icon: "⌕", component: SearchScreen },
   { name: "Community", label: "عمومی", icon: "◍", component: CommunityScreen },
   { name: "Playlists", label: "پلی‌لیست", icon: "≣", component: PlaylistsScreen },
 ];
