@@ -38,11 +38,11 @@ export function PromptProvider({ children }: { children: React.ReactNode }) {
               value={value}
               onChangeText={setValue}
               autoFocus
-              textAlign="right"
+              textAlign="left"
             />
             <View style={styles.row}>
-              <TouchableOpacity style={styles.btn} onPress={() => done(null)}><Text style={styles.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.ok]} onPress={() => done(value.trim() || null)}><Text style={styles.okTxt}>تایید</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.btn} onPress={() => done(null)}><Text style={styles.btnTxt}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, styles.ok]} onPress={() => done(value.trim() || null)}><Text style={styles.okTxt}>OK</Text></TouchableOpacity>
             </View>
           </Pressable>
         </Pressable>
@@ -54,7 +54,7 @@ export function PromptProvider({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 28 },
   box: { width: "100%", backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 18 },
-  title: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "right", marginBottom: 12 },
+  title: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "left", marginBottom: 12 },
   input: { backgroundColor: theme.bg2, borderRadius: theme.radiusSm, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 12, height: 46 },
   row: { flexDirection: "row", gap: 8, marginTop: 14 },
   btn: { flex: 1, height: 44, borderRadius: theme.radiusSm, alignItems: "center", justifyContent: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line },

@@ -34,7 +34,7 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <TouchableOpacity style={styles.cancel} onPress={close}><Text style={styles.cancelTxt}>انصراف</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.cancel} onPress={close}><Text style={styles.cancelTxt}>Cancel</Text></TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   grab: { width: 38, height: 4, borderRadius: 2, backgroundColor: theme.line, alignSelf: "center", marginBottom: 12 },
   title: { color: theme.muted, fontSize: 12.5, fontWeight: "600", textAlign: "center", paddingBottom: 12 },
   btn: { backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line, borderRadius: theme.radius, paddingVertical: 15, paddingHorizontal: 16, marginBottom: 7 },
-  btnTxt: { color: theme.text, fontSize: 14.5, fontWeight: "600", textAlign: "right" },
+  btnTxt: { color: theme.text, fontSize: 14.5, fontWeight: "600", textAlign: "left" },
   danger: { color: theme.danger },
   cancel: { paddingVertical: 14, alignItems: "center", marginTop: 4 },
   cancelTxt: { color: theme.muted, fontSize: 14, fontWeight: "600" },

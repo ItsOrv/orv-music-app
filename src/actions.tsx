@@ -14,37 +14,37 @@ export function useTrackActions() {
   const toast = useToast();
 
   const send = async (id: number) => {
-    toast("داره می‌ره تو تلگرام…");
-    try { await sendTrack(id); toast("تو تلگرام فرستاده شد ✓"); }
-    catch { toast("ارسال نشد"); }
+    toast("Sending to Telegram…");
+    try { await sendTrack(id); toast("Sent to Telegram ✓"); }
+    catch { toast("Couldn't send"); }
   };
 
   const addToPlaylistFlow = async (trackId: number) => {
     let pls: Awaited<ReturnType<typeof listPlaylists>> = [];
-    try { pls = await listPlaylists(); } catch { toast("خطا در بارگذاری پلی‌لیست‌ها"); return; }
+    try { pls = await listPlaylists(); } catch { toast("Couldn't load playlists"); return; }
     const actions = pls.map((p) => ({
       label: p.name,
       onPress: async () => {
-        try { await addToPlaylist(p.id, trackId); toast(`اضافه شد به «${p.name}»`); }
-        catch { toast("اضافه نشد"); }
+        try { await addToPlaylist(p.id, trackId); toast(`Added to "${p.name}"`); }
+        catch { toast("Couldn't add"); }
       },
     }));
     actions.push({
-      label: "پلی‌لیستِ جدید…",
+      label: "New playlist…",
       onPress: async () => {
-        const n = await prompt("پلی‌لیستِ جدید", "اسمِ پلی‌لیست");
+        const n = await prompt("New playlist", "Playlist name");
         if (!n) return;
-        try { const p = await createPlaylist(n); await addToPlaylist(p.id, trackId); toast(`اضافه شد به «${n}»`); }
-        catch { toast("ساخته نشد"); }
+        try { const p = await createPlaylist(n); await addToPlaylist(p.id, trackId); toast(`Added to "${n}"`); }
+        catch { toast("Couldn't create"); }
       },
     });
-    openSheet("افزودن به پلی‌لیست", actions);
+    openSheet("Add to playlist", actions);
   };
 
   const confirmDelete = (id: number, onDone: () => void) => {
-    Alert.alert("حذف آهنگ", "آهنگ کامل از کتابخونه حذف بشه؟", [
-      { text: "انصراف", style: "cancel" },
-      { text: "حذف", style: "destructive", onPress: async () => { try { await deleteTrack(id); onDone(); } catch { toast("حذف نشد"); } } },
+    Alert.alert("Delete track", "Remove this track from your library entirely?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => { try { await deleteTrack(id); onDone(); } catch { toast("Couldn't delete"); } } },
     ]);
   };
 
@@ -52,10 +52,10 @@ export function useTrackActions() {
   const libraryRowMenu = (track: Track, onDeleted: () => void) => {
     if (track.id == null) return;
     const id = track.id;
-    openSheet("چی‌کار کنم؟", [
-      { label: "بفرست به تلگرام (پخشِ آفلاین)", onPress: () => send(id) },
-      { label: "افزودن به پلی‌لیست", onPress: () => addToPlaylistFlow(id) },
-      { label: "حذفِ آهنگ", danger: true, onPress: () => confirmDelete(id, onDeleted) },
+    openSheet("What do you want to do?", [
+      { label: "Send to Telegram (offline playback)", onPress: () => send(id) },
+      { label: "Add to playlist", onPress: () => addToPlaylistFlow(id) },
+      { label: "Delete track", danger: true, onPress: () => confirmDelete(id, onDeleted) },
     ]);
   };
 
@@ -68,17 +68,17 @@ export function useTrackActions() {
 
   // ＋ menu for an explore/discover row (send & playlist auto-add to library first)
   const exploreRowMenu = (track: Track) => {
-    openSheet(`${track.title || "بی‌نام"}`, [
-      { label: "افزودن به کتابخونه", onPress: async () => { try { await ensureInLibrary(track); toast("به کتابخونه اضافه شد ✓"); } catch { toast("اضافه نشد"); } } },
-      { label: "بفرست به تلگرام", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await send(id); } catch { toast("انجام نشد"); } } },
-      { label: "افزودن به پلی‌لیست", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await addToPlaylistFlow(id); } catch { toast("انجام نشد"); } } },
+    openSheet(`${track.title || "Untitled"}`, [
+      { label: "Add to library", onPress: async () => { try { await ensureInLibrary(track); toast("Added to library ✓"); } catch { toast("Couldn't add"); } } },
+      { label: "Send to Telegram", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await send(id); } catch { toast("Something went wrong"); } } },
+      { label: "Add to playlist", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await addToPlaylistFlow(id); } catch { toast("Something went wrong"); } } },
     ]);
   };
 
   // save a community track into the library
   const saveCommunity = async (track: Track) => {
-    try { await communitySave(track.id as number); toast("به کتابخونه اضافه شد ✓"); }
-    catch { toast("ذخیره نشد"); }
+    try { await communitySave(track.id as number); toast("Added to library ✓"); }
+    catch { toast("Couldn't save"); }
   };
 
   return { send, addToPlaylistFlow, confirmDelete, libraryRowMenu, ensureInLibrary, exploreRowMenu, saveCommunity };

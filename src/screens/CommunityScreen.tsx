@@ -28,13 +28,13 @@ export default function CommunityScreen() {
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>عمومی</Text>
-      <TextInput style={styles.search} placeholder="جستجو تو آهنگای همه…" placeholderTextColor={theme.muted2} value={q} onChangeText={setQ} />
+      <Text style={styles.title}>Community</Text>
+      <TextInput style={styles.search} placeholder="Search everyone's tracks…" placeholderTextColor={theme.muted2} value={q} onChangeText={setQ} />
 
       {loading ? (
         <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} />
       ) : tracks.length === 0 ? (
-        <Text style={styles.empty}>چیزی نبود. آهنگایی که کاربرا برای ربات می‌فرستن اینجا برای همه به اشتراک گذاشته می‌شن.</Text>
+        <Text style={styles.empty}>Nothing here yet. Tracks that users send to the bot are shared here for everyone.</Text>
       ) : (
         <FlatList
           data={tracks}
@@ -62,7 +62,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 16 },
   title: { color: theme.text, fontSize: 20, fontWeight: "800", marginBottom: 12 },
-  search: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 14, height: 44, marginBottom: 4, textAlign: "right" },
+  search: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 14, height: 44, marginBottom: 4, textAlign: "left" },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },
   right: { flexDirection: "row", alignItems: "center", gap: 6 },
   add: { color: theme.gold, fontSize: 24, fontWeight: "700", paddingHorizontal: 6 },

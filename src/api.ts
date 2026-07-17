@@ -113,16 +113,21 @@ export type Me = {
 };
 
 export type Playlist = { id: number; name: string; count: number };
+export type Album = { album_id: number; title: string; artist: string; cover: string };
+export type Genre = { id: number; name: string; cover: string };
 export type ForYou = {
-  for_you?: { seed: string; tracks: Track[] }[];
+  for_you?: { title: string; tracks: Track[] }[];
   chart: Track[];
-  new_releases: { album_id: number; title: string; artist: string; cover: string }[];
-  genres: { id: number; name: string; cover: string }[];
+  new_releases: Album[];
+  genres: Genre[];
 };
 
 export const getMe = () => api<Me>("me");
 export const getTracks = (q?: string) => api<Track[]>(`tracks${q ? `?q=${encodeURIComponent(q)}` : ""}`);
 export const deleteTrack = (id: number) => api(`tracks/${id}`, { method: "DELETE" });
+
+export const getHistory = (limit = 20) => api<Track[]>(`history?limit=${limit}`);
+export const getLiked = () => api<Track[]>("likes");
 
 export const discoverSearch = (q: string) => api<Track[]>(`discover/search?q=${encodeURIComponent(q)}`);
 export const discoverForYou = () => api<ForYou>("discover/foryou");

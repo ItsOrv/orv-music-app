@@ -26,7 +26,7 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
       const me = await pollPairing(s.code); // waits until the user taps Start in the bot
       onSignedIn(me);
     } catch (e: any) {
-      Alert.alert("اتصال", e?.message === "expired" ? "کد منقضی شد، دوباره «اتصال با تلگرام» رو بزن." : "اتصال کامل نشد، دوباره امتحان کن.");
+      Alert.alert("Connection", e?.message === "expired" ? "The code expired. Tap \"Connect Telegram\" again." : "Couldn't complete the connection. Try again.");
       setLink(null);
     } finally {
       setBusy(null);
@@ -45,29 +45,29 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
       <View style={styles.brand}>
         <Text style={styles.logo}>♪</Text>
         <Text style={styles.title}>Orv Music</Text>
-        <Text style={styles.sub}>کتابخونه‌ی موزیکت، همه‌جا — سینک با رباتِ تلگرامت</Text>
+        <Text style={styles.sub}>Your music library, everywhere — synced with your Telegram bot</Text>
       </View>
 
       <TouchableOpacity style={[styles.btn, styles.tg]} onPress={onTelegram} disabled={busy !== null} activeOpacity={0.85}>
-        {busy === "tg" ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.tgTxt}>اتصال با تلگرام</Text>}
+        {busy === "tg" ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.tgTxt}>Connect Telegram</Text>}
       </TouchableOpacity>
 
       {link && (
         <View style={styles.panel}>
-          <Text style={styles.panelTitle}>اگه تلگرام خودش باز نشد:</Text>
-          <Text style={styles.panelStep}>لینکو کپی کن، تو تلگرام بازش کن (یا برای ربات بفرست) و Start رو بزن. بعد برگرد همینجا.</Text>
+          <Text style={styles.panelTitle}>If Telegram didn't open on its own:</Text>
+          <Text style={styles.panelStep}>Copy the link, open it in Telegram (or send it to the bot) and tap Start. Then come back here.</Text>
           <Text style={styles.linkBox} selectable numberOfLines={1} ellipsizeMode="middle">{link}</Text>
           <View style={styles.panelRow}>
             <TouchableOpacity style={[styles.smBtn, styles.smBtnGold]} onPress={copy}>
-              <Text style={styles.smBtnGoldTxt}>{copied ? "کپی شد ✓" : "کپی لینک"}</Text>
+              <Text style={styles.smBtnGoldTxt}>{copied ? "Copied ✓" : "Copy link"}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.smBtn} onPress={() => link && Linking.openURL(link).catch(() => {})}>
-              <Text style={styles.smBtnTxt}>باز کردن تلگرام</Text>
+              <Text style={styles.smBtnTxt}>Open Telegram</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.waiting}>
             <ActivityIndicator color={theme.gold} size="small" />
-            <Text style={styles.waitingTxt}>منتظرِ تایید تو تلگرام…</Text>
+            <Text style={styles.waitingTxt}>Waiting for confirmation in Telegram…</Text>
           </View>
         </View>
       )}
@@ -76,13 +76,13 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
         <GoogleLoginButton busy={busy} setBusy={setBusy} onSignedIn={onSignedIn} />
       ) : (
         <View style={[styles.btn, styles.google, styles.disabled]}>
-          <Text style={styles.googleTxt}>ورود با گوگل</Text>
+          <Text style={styles.googleTxt}>Sign in with Google</Text>
         </View>
       ))}
 
       {!link && (
         <Text style={styles.hint}>
-          «اتصال با تلگرام» بازت می‌کنه تو رباتِ @OrvMusicBot؛ Start رو بزن و برگرد — کتابخونه‌ت خودکار سینک می‌شه.
+          "Connect Telegram" opens @OrvMusicBot — tap Start and come back, and your library syncs automatically.
         </Text>
       )}
     </View>
@@ -112,7 +112,7 @@ function GoogleLoginButton({
         setBusy("google");
         googleLogin(idToken)
           .then(onSignedIn)
-          .catch(() => Alert.alert("گوگل", "این حساب گوگل هنوز به هیچ اکانتی وصل نشده. اول با تلگرام وارد شو، بعد از تنظیمات گوگل رو وصل کن."))
+          .catch(() => Alert.alert("Google", "This Google account isn't linked to any account yet. Sign in with Telegram first, then connect Google from Settings."))
           .finally(() => setBusy(null));
       }
     }
@@ -125,7 +125,7 @@ function GoogleLoginButton({
       disabled={busy !== null || !request}
       activeOpacity={0.85}
     >
-      {busy === "google" ? <ActivityIndicator color={theme.text} /> : <Text style={styles.googleTxt}>ورود با گوگل</Text>}
+      {busy === "google" ? <ActivityIndicator color={theme.text} /> : <Text style={styles.googleTxt}>Sign in with Google</Text>}
     </TouchableOpacity>
   );
 }
@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4 },
   hint: { color: theme.muted2, fontSize: 12, textAlign: "center", lineHeight: 20, marginTop: 14 },
   panel: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 16, gap: 10 },
-  panelTitle: { color: theme.text, fontSize: 14, fontWeight: "800", textAlign: "right" },
-  panelStep: { color: theme.muted, fontSize: 12.5, lineHeight: 20, textAlign: "right" },
+  panelTitle: { color: theme.text, fontSize: 14, fontWeight: "800", textAlign: "left" },
+  panelStep: { color: theme.muted, fontSize: 12.5, lineHeight: 20, textAlign: "left" },
   linkBox: { color: theme.gold, fontSize: 12.5, backgroundColor: theme.bg2, borderRadius: theme.radiusSm, borderWidth: 1, borderColor: theme.line, paddingHorizontal: 12, paddingVertical: 11, textAlign: "left" },
   panelRow: { flexDirection: "row", gap: 8 },
   smBtn: { flex: 1, height: 44, borderRadius: theme.radiusSm, alignItems: "center", justifyContent: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line },

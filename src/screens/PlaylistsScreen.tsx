@@ -34,31 +34,31 @@ export default function PlaylistsScreen() {
   };
 
   const create = async () => {
-    const name = await prompt("پلی‌لیستِ جدید", "اسمِ پلی‌لیست");
+    const name = await prompt("New playlist", "Playlist name");
     if (!name) return;
-    try { await createPlaylist(name); load(); } catch { toast("ساخته نشد"); }
+    try { await createPlaylist(name); load(); } catch { toast("Couldn't create"); }
   };
 
   const remove = (p: Playlist) => {
-    Alert.alert("حذف پلی‌لیست", `«${p.name}» حذف بشه؟`, [
-      { text: "انصراف", style: "cancel" },
-      { text: "حذف", style: "destructive", onPress: async () => { try { await deletePlaylist(p.id); load(); } catch { toast("حذف نشد"); } } },
+    Alert.alert("Delete playlist", `Delete "${p.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => { try { await deletePlaylist(p.id); load(); } catch { toast("Couldn't delete"); } } },
     ]);
   };
 
   const removeTrack = (t: Track) => {
     if (!open || t.id == null) return;
-    Alert.alert("حذف از پلی‌لیست", `«${t.title}» از این پلی‌لیست حذف بشه؟`, [
-      { text: "انصراف", style: "cancel" },
-      { text: "حذف", style: "destructive", onPress: async () => { try { await removeFromPlaylist(open.id, t.id as number); openPlaylist(open); } catch { toast("حذف نشد"); } } },
+    Alert.alert("Remove from playlist", `Remove "${t.title}" from this playlist?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Remove", style: "destructive", onPress: async () => { try { await removeFromPlaylist(open.id, t.id as number); openPlaylist(open); } catch { toast("Couldn't remove"); } } },
     ]);
   };
 
   const send = async () => {
     if (!open) return;
-    toast("پلی‌لیست داره می‌ره تو تلگرام…");
-    try { const r = await sendPlaylist(open.id); toast(`${r.count || 0} آهنگ فرستاده شد ✓`); }
-    catch { toast("ارسال نشد"); }
+    toast("Sending playlist to Telegram…");
+    try { const r = await sendPlaylist(open.id); toast(`Sent ${r.count || 0} tracks ✓`); }
+    catch { toast("Couldn't send"); }
   };
 
   // ----- open playlist detail -----
@@ -67,10 +67,10 @@ export default function PlaylistsScreen() {
       <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
         <View style={styles.detailHead}>
           <TouchableOpacity onPress={() => setOpen(null)}><Text style={styles.back}>‹ {open.name}</Text></TouchableOpacity>
-          {tracks.length > 0 && <TouchableOpacity style={styles.sendBtn} onPress={send}><Text style={styles.sendTxt}>بفرست به تلگرام</Text></TouchableOpacity>}
+          {tracks.length > 0 && <TouchableOpacity style={styles.sendBtn} onPress={send}><Text style={styles.sendTxt}>Send to Telegram</Text></TouchableOpacity>}
         </View>
         {tLoading ? <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} /> :
-          tracks.length === 0 ? <Text style={styles.empty}>این پلی‌لیست خالیه.{"\n"}از کتابخونه یا اکسپلور، آهنگ اضافه کن.</Text> : (
+          tracks.length === 0 ? <Text style={styles.empty}>This playlist is empty.{"\n"}Add tracks from your Library or Explore.</Text> : (
             <FlatList
               data={tracks}
               keyExtractor={(t) => String(t.id)}
@@ -89,11 +89,11 @@ export default function PlaylistsScreen() {
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>پلی‌لیست‌ها</Text>
-        <TouchableOpacity style={styles.newBtn} onPress={create}><Text style={styles.newTxt}>+ جدید</Text></TouchableOpacity>
+        <Text style={styles.title}>Playlists</Text>
+        <TouchableOpacity style={styles.newBtn} onPress={create}><Text style={styles.newTxt}>+ New</Text></TouchableOpacity>
       </View>
       {loading ? <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} /> :
-        pls.length === 0 ? <Text style={styles.empty}>پلی‌لیستی نساختی.{"\n"}یکی بساز و آهنگا رو دسته‌بندی کن.</Text> : (
+        pls.length === 0 ? <Text style={styles.empty}>You haven't created any playlists.{"\n"}Create one and organize your tracks.</Text> : (
           <FlatList
             data={pls}
             keyExtractor={(p) => String(p.id)}
@@ -101,7 +101,7 @@ export default function PlaylistsScreen() {
               <TouchableOpacity style={styles.card} onPress={() => openPlaylist(item)} onLongPress={() => remove(item)} activeOpacity={0.7}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.name}</Text>
-                  <Text style={styles.cardCount}>{item.count} آهنگ</Text>
+                  <Text style={styles.cardCount}>{item.count} tracks</Text>
                 </View>
                 <TouchableOpacity onPress={() => remove(item)} hitSlop={10}><Text style={styles.rm}>🗑</Text></TouchableOpacity>
               </TouchableOpacity>
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
   newTxt: { color: "#ffffff", fontWeight: "800", fontSize: 13 },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },
   card: { flexDirection: "row", alignItems: "center", backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 16, marginBottom: 9 },
-  cardName: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "right" },
-  cardCount: { color: theme.muted, fontSize: 12, marginTop: 4, textAlign: "right" },
+  cardName: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "left" },
+  cardCount: { color: theme.muted, fontSize: 12, marginTop: 4, textAlign: "left" },
   rm: { color: theme.muted, fontSize: 18, paddingHorizontal: 6 },
   detailHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   back: { color: theme.gold, fontSize: 15, fontWeight: "700", paddingVertical: 8 },

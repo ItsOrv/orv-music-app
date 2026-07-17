@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef, useState, useCallback } from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, Animated } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Animated } from "react-native";
 import { theme } from "./theme";
 import { Track, coverUrl } from "./api";
 
@@ -29,13 +29,53 @@ export function TrackRow({
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <Cover track={track} />
       <View style={{ flex: 1 }}>
-        <Text numberOfLines={1} style={[styles.t, active && { color: theme.gold }]}>{track.title || "بی‌نام"}</Text>
+        <Text numberOfLines={1} style={[styles.t, active && { color: theme.gold }]}>{track.title || "Untitled"}</Text>
         {!!track.artist && <Text numberOfLines={1} style={styles.a}>{track.artist}</Text>}
       </View>
       {right}
     </TouchableOpacity>
   );
 }
+
+export function CoverCard({
+  uri, title, subtitle, tag, active, onPress,
+}: {
+  uri: string | null;
+  title: string;
+  subtitle?: string;
+  tag?: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={cardStyles.card} onPress={onPress} activeOpacity={0.75}>
+      <View style={cardStyles.cover}>
+        {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} /> : <Text style={cardStyles.note}>♪</Text>}
+        {!!tag && <Text numberOfLines={2} style={cardStyles.tag}>{tag}</Text>}
+      </View>
+      <Text numberOfLines={1} style={[cardStyles.t, active && { color: theme.gold }]}>{title || "Untitled"}</Text>
+      {!!subtitle && <Text numberOfLines={1} style={cardStyles.a}>{subtitle}</Text>}
+    </TouchableOpacity>
+  );
+}
+
+export function Rail({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cardStyles.rail}>
+      {children}
+    </ScrollView>
+  );
+}
+
+const cardStyles = StyleSheet.create({
+  rail: { gap: 12, paddingVertical: 6, paddingRight: 8 },
+  card: { width: 150 },
+  cover: { width: 150, height: 150, borderRadius: theme.radius, backgroundColor: theme.card2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  note: { color: theme.muted2, fontSize: 36 },
+  tag: { position: "absolute", left: 10, bottom: 10, right: 10, color: "#ffffff", fontSize: 15, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.6)", textShadowRadius: 6, textAlign: "left" },
+  t: { color: theme.text, fontSize: 13.5, fontWeight: "600", marginTop: 8, textAlign: "left" },
+  a: { color: theme.muted, fontSize: 11.5, marginTop: 3, textAlign: "left" },
+});
 
 export function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -84,11 +124,11 @@ export const iconBtn = StyleSheet.create({
 const styles = StyleSheet.create({
   cover: { backgroundColor: theme.card2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", paddingVertical: 8, gap: 12 },
-  t: { color: theme.text, fontSize: 15, fontWeight: "600", textAlign: "right" },
-  a: { color: theme.muted, fontSize: 12.5, marginTop: 3, textAlign: "right" },
+  t: { color: theme.text, fontSize: 15, fontWeight: "600", textAlign: "left" },
+  a: { color: theme.muted, fontSize: 12.5, marginTop: 3, textAlign: "left" },
   sec: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20, marginBottom: 8 },
   secTick: { width: 3, height: 15, borderRadius: 2, backgroundColor: theme.gold },
-  secTxt: { color: theme.text, fontSize: 15, fontWeight: "800", textAlign: "right" },
+  secTxt: { color: theme.text, fontSize: 15, fontWeight: "800", textAlign: "left" },
   toast: { position: "absolute", bottom: 150, alignSelf: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 11, maxWidth: "88%" },
   toastTxt: { color: theme.text, fontSize: 13, textAlign: "center" },
 });

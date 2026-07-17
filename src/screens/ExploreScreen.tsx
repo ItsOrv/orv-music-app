@@ -53,14 +53,14 @@ export default function ExploreScreen() {
       <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => setSub(null)}><Text style={styles.back}>‹ {sub.title}</Text></TouchableOpacity>
         {loading ? <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} /> :
-          sub.tracks.length ? renderList(sub.tracks) : <Text style={styles.empty}>چیزی نبود.</Text>}
+          sub.tracks.length ? renderList(sub.tracks) : <Text style={styles.empty}>Nothing here.</Text>}
       </View>
     );
   }
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>اکسپلور</Text>
+      <Text style={styles.title}>Explore</Text>
 
       {loading && !foryou ? (
         <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} />
@@ -68,7 +68,7 @@ export default function ExploreScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
           {!!foryou.chart?.length && (
             <>
-              <SectionHeader>داغِ الان</SectionHeader>
+              <SectionHeader>Trending</SectionHeader>
               {foryou.chart.map((t, i) => (
                 <TrackRow key={t.ext_id || i} track={t} active={sameTrack(player.current, t)} onPress={() => player.playQueue(foryou.chart, i)} right={addBtn(t)} />
               ))}
@@ -77,7 +77,7 @@ export default function ExploreScreen() {
 
           {!!foryou.new_releases?.length && (
             <>
-              <SectionHeader>تازه‌ها</SectionHeader>
+              <SectionHeader>New Releases</SectionHeader>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albums}>
                 {foryou.new_releases.map((a) => (
                   <TouchableOpacity key={a.album_id} style={styles.album} onPress={() => openAlbum(a.album_id, a.title)}>
@@ -93,7 +93,7 @@ export default function ExploreScreen() {
           )}
         </ScrollView>
       ) : (
-        <Text style={styles.empty}>اکسپلور در دسترس نیست. بعداً امتحان کن.</Text>
+        <Text style={styles.empty}>Explore isn't available. Try again later.</Text>
       )}
     </View>
   );
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   album: { width: 140 },
   albumCover: { width: 140, height: 140, borderRadius: theme.radius, backgroundColor: theme.card2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   albumNote: { color: theme.muted2, fontSize: 34 },
-  albumT: { color: theme.text, fontSize: 13, fontWeight: "600", marginTop: 8, textAlign: "right" },
-  albumA: { color: theme.muted, fontSize: 11.5, marginTop: 3, textAlign: "right" },
+  albumT: { color: theme.text, fontSize: 13, fontWeight: "600", marginTop: 8, textAlign: "left" },
+  albumA: { color: theme.muted, fontSize: 11.5, marginTop: 3, textAlign: "left" },
   img: { width: "100%", height: "100%" },
 });

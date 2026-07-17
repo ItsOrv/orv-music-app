@@ -21,25 +21,25 @@ export default function SettingsScreen({ navigation, me, setMe }: { navigation: 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ برگشت</Text></TouchableOpacity>
-        <Text style={styles.title}>تنظیمات</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
+        <Text style={styles.title}>Settings</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>حساب</Text>
+        <Text style={styles.label}>Account</Text>
         <Text style={styles.value}>{me.first_name || me.username || me.id}</Text>
-        <Text style={styles.sub}>{me.tracks} آهنگ سینک‌شده با تلگرام</Text>
+        <Text style={styles.sub}>{me.tracks} tracks synced with Telegram</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>حساب گوگل</Text>
-        <Text style={styles.sub}>{me.google_linked ? "وصل شده ✓ — از هر دستگاهی با گوگل وارد شو" : "وصل نیست"}</Text>
+        <Text style={styles.label}>Google account</Text>
+        <Text style={styles.sub}>{me.google_linked ? "Connected ✓ — sign in with Google from any device" : "Not connected"}</Text>
         {!me.google_linked && googleConfigured && <GoogleLinkButton setMe={setMe} />}
-        {!googleConfigured && <Text style={styles.warn}>برای فعال‌شدن، Google OAuth client id توی app.json ست بشه.</Text>}
+        {!googleConfigured && <Text style={styles.warn}>To enable this, set a Google OAuth client id in app.json.</Text>}
       </View>
 
-      <TouchableOpacity style={styles.logout} onPress={onLogout}><Text style={styles.logoutTxt}>خروج</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.logout} onPress={onLogout}><Text style={styles.logoutTxt}>Log out</Text></TouchableOpacity>
     </View>
   );
 }
@@ -62,9 +62,9 @@ function GoogleLinkButton({ setMe }: { setMe: (m: Me | null) => void }) {
         googleLink(idToken)
           .then(async () => {
             setMe(await api<Me>("me"));
-            Alert.alert("گوگل", "حساب گوگل وصل شد. حالا از هر دستگاهی با گوگل وارد شو.");
+            Alert.alert("Google", "Google account connected. You can now sign in with Google from any device.");
           })
-          .catch(() => Alert.alert("گوگل", "اتصال حساب گوگل انجام نشد."))
+          .catch(() => Alert.alert("Google", "Couldn't connect your Google account."))
           .finally(() => setBusy(false));
       }
     }
@@ -76,7 +76,7 @@ function GoogleLinkButton({ setMe }: { setMe: (m: Me | null) => void }) {
       onPress={() => promptAsync()}
       disabled={busy || !request}
     >
-      {busy ? <ActivityIndicator color={theme.text} /> : <Text style={styles.btnTxt}>اتصال حساب گوگل</Text>}
+      {busy ? <ActivityIndicator color={theme.text} /> : <Text style={styles.btnTxt}>Connect Google account</Text>}
     </TouchableOpacity>
   );
 }
