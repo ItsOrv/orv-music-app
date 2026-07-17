@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import * as Google from "expo-auth-session/providers/google";
 import { theme } from "../theme";
 import { api, Me } from "../api";
 import { googleLink, logout } from "../auth";
+import { autoplayOn, setAutoplay } from "../prefs";
+import { useToast } from "../ui";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
 const googleConfigured = !!(extra.googleExpoClientId || extra.googleIosClientId || extra.googleAndroidClientId || extra.googleWebClientId);
@@ -32,6 +34,8 @@ export default function SettingsScreen({ navigation, me, setMe }: { navigation: 
         <Text style={styles.sub}>{me.tracks} tracks synced with Telegram</Text>
       </View>
 
+      <AutoplayCard />
+
       <View style={styles.card}>
         <Text style={styles.label}>Google account</Text>
         <Text style={styles.sub}>{me.google_linked ? "Connected ✓ — sign in with Google from any device" : "Not connected"}</Text>
@@ -40,6 +44,27 @@ export default function SettingsScreen({ navigation, me, setMe }: { navigation: 
       </View>
 
       <TouchableOpacity style={styles.logout} onPress={onLogout}><Text style={styles.logoutTxt}>Log out</Text></TouchableOpacity>
+    </View>
+  );
+}
+
+function AutoplayCard() {
+  const [on, setOn] = useState(autoplayOn());
+  const toast = useToast();
+  const flip = async (v: boolean) => {
+    setOn(v);
+    await setAutoplay(v);
+    toast(v ? "Autoplay radio on" : "Autoplay radio off");
+  };
+  return (
+    <View style={styles.card}>
+      <View style={styles.toggleRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.value}>Autoplay radio</Text>
+          <Text style={styles.sub}>When the queue ends (and Repeat is off), it keeps going with similar songs.</Text>
+        </View>
+        <Switch value={on} onValueChange={flip} trackColor={{ false: theme.card2, true: theme.gold }} thumbColor="#ffffff" />
+      </View>
     </View>
   );
 }
@@ -87,6 +112,7 @@ const styles = StyleSheet.create({
   back: { color: theme.gold, fontSize: 15, width: 60 },
   title: { color: theme.text, fontSize: 18, fontWeight: "800" },
   card: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 16, marginBottom: 12 },
+  toggleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   label: { color: theme.muted, fontSize: 12, marginBottom: 6 },
   value: { color: theme.text, fontSize: 16, fontWeight: "700" },
   sub: { color: theme.muted, fontSize: 13, marginTop: 6, lineHeight: 20 },

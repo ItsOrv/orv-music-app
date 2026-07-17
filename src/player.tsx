@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { Audio, AVPlaybackStatus } from "expo-av";
-import { Track, trackStreamUrl } from "./api";
+import { Track, trackStreamUrl, trackKey, discoverRadio } from "./api";
+import { getDownloadedUri } from "./downloads";
+import { initPrefs, autoplayOn } from "./prefs";
+import { useToast } from "./ui";
 
 type Repeat = "off" | "all" | "one";
 
@@ -21,6 +24,10 @@ type PlayerState = {
   seek: (ms: number) => Promise<void>;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  sleepArmed: boolean;
+  sleepMinutes: (mins: number) => void;
+  sleepEndOfTrack: () => void;
+  clearSleep: () => void;
 };
 
 const Ctx = createContext<PlayerState | null>(null);
@@ -40,6 +47,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<Repeat>("all");
+  const [sleepArmed, setSleepArmed] = useState(false);
+  const sleepEnd = useRef(false);
+  const sleepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const radioBusy = useRef(false);
+  const toast = useToast();
 
   // no-repeat shuffle bag + history, mirroring the web player
   const bag = useRef<number[]>([]);
@@ -49,6 +61,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   st.current = { queue, index, shuffle, repeat };
 
   useEffect(() => {
+    initPrefs();
     Audio.setAudioModeAsync({
       staysActiveInBackground: true,
       playsInSilentModeIOS: true,
@@ -74,6 +87,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPosition(status.positionMillis || 0);
     setDuration(status.durationMillis || 0);
     if (status.didJustFinish && !status.isLooping) {
+      if (sleepEnd.current) {
+        clearSleep();
+        toast("Sleep timer: music paused 😴");
+        void sound.current?.setStatusAsync({ shouldPlay: false, positionMillis: 0 }).catch(() => {});
+        return;
+      }
       void advance(true);
     }
   }, []);
@@ -90,6 +109,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Just resolve + touch the first byte, warming the server's yt-dlp URL cache (the real latency).
   const warm = async (t: Track) => {
     try {
+      if (await getDownloadedUri(trackKey(t))) return;
       const uri = await trackStreamUrl(t);
       if (uri && !uri.startsWith("file")) fetch(uri, { headers: { Range: "bytes=0-1" } }).catch(() => {});
     } catch (e) {}
@@ -117,7 +137,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setIndex(i);
     try {
       if (sound.current) { await sound.current.unloadAsync(); sound.current = null; }
-      const uri = await trackStreamUrl(track);
+      const uri = (await getDownloadedUri(trackKey(track))) || (await trackStreamUrl(track));
       if (!uri) throw new Error("no stream");
       const { sound: s } = await Audio.Sound.createAsync(
         { uri },
@@ -140,6 +160,40 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await loadAt(i, list);
   }, [loadAt]);
 
+  // queue ran out (repeat off) → keep going with similar tracks, like the web player
+  const autoplayExtend = useCallback(async () => {
+    const { queue: q, index: idx, shuffle: sh } = st.current;
+    const t = q[idx];
+    if (radioBusy.current || !t || !t.artist) {
+      await sound.current?.pauseAsync();
+      return;
+    }
+    radioBusy.current = true;
+    try {
+      const list = await discoverRadio(t.artist);
+      const have = new Set(q.map(trackKey));
+      const fresh = (list || []).filter((x) => !have.has(trackKey(x)));
+      if (!fresh.length) {
+        await sound.current?.pauseAsync();
+        return;
+      }
+      const nq = [...q, ...fresh];
+      setQueue(nq);
+      let nextIdx = q.length;
+      if (sh) {
+        for (let i = q.length; i < nq.length; i++) bag.current.push(i);
+        nextIdx = popShuffle() as number;
+        hist.current.push(idx);
+      }
+      toast("Radio: continuing with similar songs 📻");
+      await loadAt(nextIdx, nq);
+    } catch (e) {
+      await sound.current?.pauseAsync();
+    } finally {
+      radioBusy.current = false;
+    }
+  }, [loadAt, toast]);
+
   const advance = useCallback(async (auto: boolean) => {
     const { queue: q, index: idx, shuffle: sh, repeat: rp } = st.current;
     if (!q.length) return;
@@ -155,6 +209,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         n = popShuffle();
       }
       if (n == null) {
+        if (autoplayOn()) { await autoplayExtend(); return; }
         await sound.current?.pauseAsync();
         return;
       }
@@ -165,11 +220,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     } else if (rp === "all") {
       nextIdx = 0;
     } else {
+      if (autoplayOn()) { await autoplayExtend(); return; }
       await sound.current?.pauseAsync();
       return;
     }
     await loadAt(nextIdx, q);
-  }, [loadAt]);
+  }, [loadAt, autoplayExtend]);
 
   const prev = useCallback(async () => {
     const { queue: q, index: idx, shuffle: sh } = st.current;
@@ -213,6 +269,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off"));
   }, []);
 
+  const clearSleep = useCallback(() => {
+    sleepEnd.current = false;
+    if (sleepTimer.current) { clearTimeout(sleepTimer.current); sleepTimer.current = null; }
+    setSleepArmed(false);
+  }, []);
+
+  const sleepMinutes = useCallback((mins: number) => {
+    sleepEnd.current = false;
+    if (sleepTimer.current) clearTimeout(sleepTimer.current);
+    sleepTimer.current = setTimeout(async () => {
+      await sound.current?.pauseAsync().catch(() => {});
+      clearSleep();
+      toast("Sleep timer: music paused 😴");
+    }, mins * 60000);
+    setSleepArmed(true);
+    toast(`Sleep timer: ${mins} min`);
+  }, [clearSleep, toast]);
+
+  const sleepEndOfTrack = useCallback(() => {
+    if (sleepTimer.current) { clearTimeout(sleepTimer.current); sleepTimer.current = null; }
+    sleepEnd.current = true;
+    setSleepArmed(true);
+    toast("Will pause after this track");
+  }, [toast]);
+
   const value: PlayerState = {
     queue,
     index,
@@ -230,6 +311,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     seek,
     toggleShuffle,
     cycleRepeat,
+    sleepArmed,
+    sleepMinutes,
+    sleepEndOfTrack,
+    clearSleep,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

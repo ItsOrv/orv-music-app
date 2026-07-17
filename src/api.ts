@@ -129,10 +129,22 @@ export const deleteTrack = (id: number) => api(`tracks/${id}`, { method: "DELETE
 export const getHistory = (limit = 20) => api<Track[]>(`history?limit=${limit}`);
 export const getLiked = () => api<Track[]>("likes");
 
+export type ArtistAlbum = { album_id: number; title: string; cover: string | null; year?: string | number | null };
+export type ArtistInfo = {
+  name: string;
+  picture: string | null;
+  fans?: number;
+  top: Track[];
+  albums: ArtistAlbum[];
+  related: { name: string; picture: string | null }[];
+};
+
 export const discoverSearch = (q: string) => api<Track[]>(`discover/search?q=${encodeURIComponent(q)}`);
 export const discoverForYou = () => api<ForYou>("discover/foryou");
 export const discoverGenre = (id: number) => api<Track[]>(`discover/genre/${id}`);
 export const discoverAlbum = (id: number) => api<Track[]>(`discover/album/${id}`);
+export const discoverArtist = (name: string) => api<ArtistInfo>(`discover/artist?name=${encodeURIComponent(name)}`);
+export const discoverRadio = (artist: string) => api<Track[]>(`discover/radio?artist=${encodeURIComponent(artist)}`);
 
 export const communityTracks = (q?: string) => api<Track[]>(`community/tracks${q ? `?q=${encodeURIComponent(q)}` : ""}`);
 export const communitySave = (trackId: number) => api<{ id: number }>("community/save", { method: "POST", body: JSON.stringify({ track_id: trackId }) });

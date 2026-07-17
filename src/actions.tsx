@@ -1,17 +1,24 @@
 import { Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import {
   Track, sendTrack, deleteTrack, listPlaylists, createPlaylist, addToPlaylist,
   addToLibrary, communitySave,
 } from "./api";
-import { useSheet } from "./sheet";
+import { useSheet, SheetAction } from "./sheet";
 import { usePrompt } from "./prompt";
 import { useToast } from "./ui";
+import { shareTrack } from "./share";
 
 // Shared actions for a library-owned track (has a numeric id).
 export function useTrackActions() {
   const openSheet = useSheet();
   const prompt = usePrompt();
   const toast = useToast();
+  const navigation = useNavigation<any>();
+
+  const goToArtist = (track: Track) => {
+    if (track.artist) navigation.navigate("Artist", { name: track.artist });
+  };
 
   const send = async (id: number) => {
     toast("Sending to Telegram…");
@@ -52,11 +59,14 @@ export function useTrackActions() {
   const libraryRowMenu = (track: Track, onDeleted: () => void) => {
     if (track.id == null) return;
     const id = track.id;
-    openSheet("What do you want to do?", [
+    const acts: SheetAction[] = [
       { label: "Send to Telegram (offline playback)", onPress: () => send(id) },
       { label: "Add to playlist", onPress: () => addToPlaylistFlow(id) },
-      { label: "Delete track", danger: true, onPress: () => confirmDelete(id, onDeleted) },
-    ]);
+      { label: "Share", onPress: () => shareTrack(track) },
+    ];
+    if (track.artist) acts.push({ label: "Go to artist", onPress: () => goToArtist(track) });
+    acts.push({ label: "Delete track", danger: true, onPress: () => confirmDelete(id, onDeleted) });
+    openSheet("What do you want to do?", acts);
   };
 
   // ensure a discover/community track exists in the library, return its id
@@ -68,11 +78,14 @@ export function useTrackActions() {
 
   // ＋ menu for an explore/discover row (send & playlist auto-add to library first)
   const exploreRowMenu = (track: Track) => {
-    openSheet(`${track.title || "Untitled"}`, [
+    const acts: SheetAction[] = [
       { label: "Add to library", onPress: async () => { try { await ensureInLibrary(track); toast("Added to library ✓"); } catch { toast("Couldn't add"); } } },
       { label: "Send to Telegram", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await send(id); } catch { toast("Something went wrong"); } } },
       { label: "Add to playlist", onPress: async () => { try { const id = await ensureInLibrary(track); if (id) await addToPlaylistFlow(id); } catch { toast("Something went wrong"); } } },
-    ]);
+      { label: "Share", onPress: () => shareTrack(track) },
+    ];
+    if (track.artist) acts.push({ label: "Go to artist", onPress: () => goToArtist(track) });
+    openSheet(`${track.title || "Untitled"}`, acts);
   };
 
   // save a community track into the library
@@ -81,5 +94,5 @@ export function useTrackActions() {
     catch { toast("Couldn't save"); }
   };
 
-  return { send, addToPlaylistFlow, confirmDelete, libraryRowMenu, ensureInLibrary, exploreRowMenu, saveCommunity };
+  return { send, addToPlaylistFlow, confirmDelete, libraryRowMenu, ensureInLibrary, exploreRowMenu, saveCommunity, goToArtist };
 }

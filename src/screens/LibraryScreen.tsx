@@ -9,9 +9,11 @@ import { getMe, getTracks, getHistory, getLiked, coverUrl, Me, Track, trackKey, 
 import { usePlayer } from "../player";
 import { TrackRow, CoverCard, Rail, SectionHeader } from "../ui";
 import { useTrackActions } from "../actions";
+import { listDownloads, removeDownload, metaTrack, fmtSize, DownloadMeta } from "../downloads";
+import { useToast } from "../ui";
 import PlaylistsScreen from "./PlaylistsScreen";
 
-type Section = "menu" | "songs" | "liked" | "playlists";
+type Section = "menu" | "songs" | "liked" | "playlists" | "downloads";
 
 export default function LibraryScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -34,6 +36,7 @@ export default function LibraryScreen({ navigation }: any) {
 
   if (section === "songs") return <SongsSubScreen onBack={() => setSection("menu")} />;
   if (section === "liked") return <LikedSubScreen onBack={() => setSection("menu")} />;
+  if (section === "downloads") return <DownloadsSubScreen onBack={() => setSection("menu")} />;
   if (section === "playlists") {
     return (
       <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
@@ -70,7 +73,7 @@ export default function LibraryScreen({ navigation }: any) {
             <LibItem icon="♥" label="Liked tracks" count={likedCount ?? ""} onPress={() => setSection("liked")} />
             <LibItem icon="♪" label="Songs" count={nsongs || ""} onPress={() => setSection("songs")} />
             <LibItem icon="≣" label="Playlists" count="" onPress={() => setSection("playlists")} />
-            <LibItem icon="↓" label="Downloads" count="" onPress={() => navigation.navigate("Settings")} />
+            <LibItem icon="↓" label="Downloads" count="" onPress={() => setSection("downloads")} />
           </View>
 
           {!!history.length && (
@@ -183,8 +186,57 @@ function LikedSubScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+function DownloadsSubScreen({ onBack }: { onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [items, setItems] = useState<DownloadMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const player = usePlayer();
+  const toast = useToast();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setItems(await listDownloads()); } catch { setItems([]); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const del = async (uid: string) => {
+    try { await removeDownload(uid); toast("Download removed"); } catch { toast("Couldn't remove"); }
+    load();
+  };
+
+  const tracks = items.map(metaTrack);
+
+  return (
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+      <TouchableOpacity onPress={onBack}><Text style={styles.back}>‹ Downloads</Text></TouchableOpacity>
+      {loading ? (
+        <ActivityIndicator color={theme.gold} style={{ marginTop: 40 }} />
+      ) : items.length === 0 ? (
+        <Text style={styles.empty}>No downloads yet.{"\n"}On the Now Playing screen, tap the ⤓ button.</Text>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(m) => m.uid}
+          renderItem={({ item, index }) => (
+            <TrackRow
+              track={{ ...tracks[index], artist: `${item.artist || ""}${item.artist ? " · " : ""}${fmtSize(item.size)}` }}
+              active={sameTrack(player.current, tracks[index])}
+              onPress={() => player.playQueue(tracks, index)}
+              right={<TouchableOpacity onPress={() => del(item.uid)} hitSlop={10}><Text style={styles.delBtn}>🗑</Text></TouchableOpacity>}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: 150 }}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={theme.gold} />}
+        />
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 16 },
+  delBtn: { color: theme.muted, fontSize: 18, paddingHorizontal: 8 },
   back: { color: theme.gold, fontSize: 15, fontWeight: "700", paddingVertical: 8, marginBottom: 4 },
   search: { backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, color: theme.text, paddingHorizontal: 14, height: 44, marginBottom: 6, textAlign: "left" },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },

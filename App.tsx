@@ -20,6 +20,7 @@ import HomeScreen from "./src/screens/HomeScreen";
 import LibraryScreen from "./src/screens/LibraryScreen";
 import SearchScreen from "./src/screens/SearchScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import ArtistScreen from "./src/screens/ArtistScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -121,6 +122,7 @@ export default function App() {
                       <Stack.Screen name="Settings">
                         {(props) => <SettingsScreen {...props} me={me} setMe={setMe} />}
                       </Stack.Screen>
+                      <Stack.Screen name="Artist" component={ArtistScreen} />
                     </>
                   ) : (
                     <Stack.Screen name="Login">
