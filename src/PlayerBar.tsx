@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   cBig: { color: theme.text, fontSize: 30 },
   on: { color: theme.gold },
   playCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: theme.gold, alignItems: "center", justifyContent: "center" },
-  playIcon: { color: "#17130c", fontSize: 26, fontWeight: "800" },
+  playIcon: { color: "#ffffff", fontSize: 26, fontWeight: "800" },
 });

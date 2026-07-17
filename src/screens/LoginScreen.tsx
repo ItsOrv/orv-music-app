@@ -49,7 +49,7 @@ export default function LoginScreen({ onSignedIn }: { onSignedIn: (m: Me) => voi
       </View>
 
       <TouchableOpacity style={[styles.btn, styles.tg]} onPress={onTelegram} disabled={busy !== null} activeOpacity={0.85}>
-        {busy === "tg" ? <ActivityIndicator color="#17130c" /> : <Text style={styles.tgTxt}>اتصال با تلگرام</Text>}
+        {busy === "tg" ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.tgTxt}>اتصال با تلگرام</Text>}
       </TouchableOpacity>
 
       {link && (
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   sub: { color: theme.muted, fontSize: 13.5, marginTop: 10, textAlign: "center", lineHeight: 22 },
   btn: { height: 54, borderRadius: theme.radius, alignItems: "center", justifyContent: "center" },
   tg: { backgroundColor: theme.gold },
-  tgTxt: { color: "#17130c", fontSize: 16, fontWeight: "800" },
+  tgTxt: { color: "#ffffff", fontSize: 16, fontWeight: "800" },
   google: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.line },
   googleTxt: { color: theme.text, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.4 },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   smBtn: { flex: 1, height: 44, borderRadius: theme.radiusSm, alignItems: "center", justifyContent: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line },
   smBtnTxt: { color: theme.text, fontSize: 13.5, fontWeight: "700" },
   smBtnGold: { backgroundColor: theme.gold, borderColor: theme.gold },
-  smBtnGoldTxt: { color: "#17130c", fontSize: 13.5, fontWeight: "800" },
+  smBtnGoldTxt: { color: "#ffffff", fontSize: 13.5, fontWeight: "800" },
   waiting: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 2 },
   waitingTxt: { color: theme.muted, fontSize: 12.5 },
 });

@@ -60,5 +60,5 @@ const styles = StyleSheet.create({
   btn: { flex: 1, height: 44, borderRadius: theme.radiusSm, alignItems: "center", justifyContent: "center", backgroundColor: theme.card2, borderWidth: 1, borderColor: theme.line },
   btnTxt: { color: theme.text, fontWeight: "700" },
   ok: { backgroundColor: theme.gold, borderColor: theme.gold },
-  okTxt: { color: "#17130c", fontWeight: "800" },
+  okTxt: { color: "#ffffff", fontWeight: "800" },
 });

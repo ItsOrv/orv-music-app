@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   title: { color: theme.text, fontSize: 20, fontWeight: "800" },
   newBtn: { backgroundColor: theme.gold, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-  newTxt: { color: "#17130c", fontWeight: "800", fontSize: 13 },
+  newTxt: { color: "#ffffff", fontWeight: "800", fontSize: 13 },
   empty: { color: theme.muted, textAlign: "center", marginTop: 60, lineHeight: 24 },
   card: { flexDirection: "row", alignItems: "center", backgroundColor: theme.card, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.line, padding: 16, marginBottom: 9 },
   cardName: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "right" },
